@@ -43,14 +43,14 @@ WORKDIR /workspace
 RUN pip3 install --no-cache-dir torch==2.2.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 # Install Inswapper Serverless Worker
-RUN git clone https://github.com/ashleykleynhans/runpod-worker-inswapper.git && \
-    cd /workspace/runpod-worker-inswapper && \
+RUN git clone https://github.com/jaemil/runpod.git && \
+    cd /workspace/runpod && \
     pip3 install -r requirements.txt && \
     pip3 uninstall -y onnxruntime && \
     pip3 install onnxruntime-gpu
 
 # Download insightface checkpoints
-RUN cd /workspace/runpod-worker-inswapper && \
+RUN cd /workspace/runpod && \
     mkdir -p checkpoints/models && \
     cd checkpoints && \
     wget -O inswapper_128.onnx https://github.com/facefusion/facefusion-assets/releases/download/models/inswapper_128.onnx && \
@@ -61,12 +61,12 @@ RUN cd /workspace/runpod-worker-inswapper && \
     unzip ../buffalo_l.zip
 
 # Install CodeFormer
-RUN cd /workspace/runpod-worker-inswapper && \
+RUN cd /workspace/runpod && \
     git lfs install && \
     git clone https://huggingface.co/spaces/sczhou/CodeFormer
 
 # Download CodeFormer weights
-RUN cd /workspace/runpod-worker-inswapper && \
+RUN cd /workspace/runpod && \
     mkdir -p CodeFormer/CodeFormer/weights/CodeFormer && \
     wget -O CodeFormer/CodeFormer/weights/CodeFormer/codeformer.pth "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/codeformer.pth" && \
     mkdir -p CodeFormer/CodeFormer/weights/facelib && \
@@ -76,7 +76,7 @@ RUN cd /workspace/runpod-worker-inswapper && \
     wget -O CodeFormer/CodeFormer/weights/realesrgan/RealESRGAN_x2plus.pth "https://github.com/sczhou/CodeFormer/releases/download/v0.1.0/RealESRGAN_x2plus.pth"
 
 # Copy handler to ensure its the latest
-COPY --chmod=755 rp_handler.py /workspace/runpod-worker-inswapper/rp_handler.py
+COPY --chmod=755 rp_handler.py /workspace/runpod/rp_handler.py
 
 # Docker container start script
 COPY --chmod=755 start_standalone.sh /start.sh
