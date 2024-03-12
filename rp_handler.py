@@ -1,6 +1,6 @@
 import os
 import io
-import uuid
+import shutil
 import base64
 import mimetypes
 import copy
@@ -9,6 +9,7 @@ import insightface
 import numpy as np
 import traceback
 import runpod
+import boto3
 from runpod.serverless.utils.rp_validator import validate
 from runpod.serverless.modules.rp_logger import RunPodLogger
 from typing import List, Union
@@ -17,14 +18,22 @@ from capturer import get_video_frame
 from restoration import *
 from schemas.input import INPUT_SCHEMA
 from typing import Optional
-
 from utilities import create_video, detect_fps, extract_frames
+from dotenv import load_dotenv
+from runpod.serverless.utils import rp_upload, rp_download
+from botocore.exceptions import ClientError
 
-
+load_dotenv()
 FACE_SWAP_MODEL = "checkpoints/inswapper_128.onnx"
 TMP_PATH = "/tmp/inswapper"
 logger = RunPodLogger()
+logger.info("env", os.getenv("BUCKET_ENDPOINT_URL"))
 
+aws_access_key_id = os.environ.get('AWS_S3_ACCESS_KEY_ID')
+aws_secret_access_key = os.environ.get('AWS_S3_SECRET_ACCESS_KEY')
+aws_region = os.environ.get('AWS_S3_REGION')
+bucket_name = os.environ.get('AWS_S3_BUCKET_NAME')
+bucket_endpoint_url = os.environ.get('BUCKET_ENDPOINT_URL')
 
 # ---------------------------------------------------------------------------- #
 # Application Functions                                                        #
@@ -352,43 +361,56 @@ def is_video(video_path: str) -> bool:
 
 
 def clean_up_temporary_files(
-    source_image_path: str, target_image_path: str, source_frames_folder_path: str
+    jobFolder: str
 ):
-    os.remove(source_image_path)
-    os.remove(target_image_path)
-    os.remove(source_frames_folder_path)
+    shutil.rmtree(jobFolder)
 
 
-def face_swap_api(input):
+def extract_objectkey_from_url(url):
+    # Split the URL by '/'
+    parts = url.split('/')
+    # Get the last part which contains the filename
+    filename = parts[-1]
+    return filename
+
+# Generate pre-signed URL
+def generate_presigned_url(bucket_name, object_key, expiration=3600):
+    s3_client = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region)
+    try:
+        response = s3_client.generate_presigned_url('get_object',
+                                                    Params={'Bucket': bucket_name,
+                                                            'Key': object_key},
+                                                    ExpiresIn=expiration)
+    except ClientError as e:
+        print("Error generating presigned URL: ", e)
+        return None
+    return response
+
+
+async def face_swap_api(event, input):
     global FACE_ANALYSER
 
     if not os.path.exists(TMP_PATH):
         os.makedirs(TMP_PATH)
+    
+    source_image_link = generate_presigned_url(bucket_name, extract_objectkey_from_url(input["source_image"]))
+    target_video_link = generate_presigned_url(bucket_name, extract_objectkey_from_url(input["target_video"]))
 
-    unique_id = uuid.uuid4()
-    source_image_data = input["source_image"]
-    target_image_data = input["target_image"]
 
-    # Decode the source image data
-    source_image = base64.b64decode(source_image_data)
-    source_file_extension = determine_file_extension(source_image_data)
-    source_image_path = f"{TMP_PATH}/source_{unique_id}{source_file_extension}"
+    logger.info("presigned_url", source_image_link)
 
-    # Save the source image to disk
-    with open(source_image_path, "wb") as source_file:
-        source_file.write(source_image)
+    # Download files
+    source_image_path = rp_download.download_files_from_urls(
+            event["id"], [source_image_link]
+        )[0]
+    target_video_path = rp_download.download_files_from_urls(
+            event["id"], [target_video_link]
+        )[0]
+    
 
-    # Decode the target image data
-    target_image = base64.b64decode(target_image_data)
-    target_file_extension = determine_file_extension(target_image_data)
-    target_image_path = f"{TMP_PATH}/target_{unique_id}{target_file_extension}"
+    logger.info("source_image", source_image_path)
+    logger.info("target_video", target_video_path)
 
-    logger.info(f"target image: {target_image}")
-    logger.info(f"Meme type: {is_video(target_image)}")
-
-    # Save the target image to disk
-    with open(target_image_path, "wb") as target_file:
-        target_file.write(target_image)
 
     try:
         logger.info(f'Source indexes: {input["source_indexes"]}')
@@ -401,9 +423,9 @@ def face_swap_api(input):
         logger.info(f'Output Format: {input["output_format"]}')
 
         # extract frames
-        fps = detect_fps(target_image_path)
+        fps = detect_fps(target_video_path)
         logger.info("fps: ", fps)
-        frame_paths = extract_frames(target_image_path, fps)
+        frame_paths = await extract_frames(target_video_path, fps)
         logger.info("frames: ", frame_paths)
 
         # face swap
@@ -438,15 +460,18 @@ def face_swap_api(input):
 
         # create video
         logger.info("create_video")
-        create_video(frame_paths, target_image_path, fps)
+        await create_video(frame_paths, target_video_path, fps)
         logger.info("create_video success")
 
-        ## clean_up_temporary_files(source_image_path, clean_up_temporary_files, clean_up_temporary_files)
+        # upload video
+        video_path = rp_upload.upload_file_to_bucket(file_name=os.path.basename(target_video_path), file_location=target_video_path, bucket_name=bucket_name, bucket_creds={"endpointUrl": bucket_endpoint_url, "accessId": aws_access_key_id, "accessSecret": aws_secret_access_key})
 
-        return {"image": result_image_base64}
+        clean_up_temporary_files(f'jobs/{event["id"]}')
+
+        return {"video_path": video_path}
     except Exception as e:
         logger.error(f"An exception was raised: {e}")
-        clean_up_temporary_files(source_image_path, target_image_path)
+        clean_up_temporary_files(f'jobs/{event["id"]}')
 
         return {
             "error": str(e),
@@ -464,7 +489,7 @@ def handler(event):
     if "errors" in validated_input:
         return {"error": validated_input["errors"]}
 
-    return face_swap_api(validated_input["validated_input"])
+    return face_swap_api(event, validated_input["validated_input"])
 
 
 if __name__ == "__main__":

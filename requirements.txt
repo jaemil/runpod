@@ -18,3 +18,4 @@ tqdm
 yapf
 python-dotenv
 runpod
+boto3

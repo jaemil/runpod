@@ -3,7 +3,7 @@ INPUT_SCHEMA = {
         'type': str,
         'required': True
     },
-    'target_image': {
+    'target_video': {
         'type': str,
         'required': True
     },

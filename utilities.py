@@ -1,16 +1,24 @@
+import asyncio
 import os
 import subprocess
 from typing import List
 
-
-def run_ffmpeg(args: List[str]) -> bool:
+async def run_ffmpeg(args: List[str]) -> bool:
     commands = ['ffmpeg', '-hide_banner', '-loglevel', 'error']
     commands.extend(args)
-    try:
-        subprocess.check_output(commands, stderr=subprocess.STDOUT)
+    
+    # Use asyncio.create_subprocess_exec instead of subprocess.Popen
+    process = await asyncio.create_subprocess_exec(*commands, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    # Read output and error asynchronously
+    stdout, stderr = await process.communicate()
+
+    # Check if the process has completed successfully
+    if process.returncode == 0:
         return True
-    except subprocess.CalledProcessError as e:
-        print(e.output)
+    else:
+        # Print error output
+        print(stderr.decode())
         return False
 
 def detect_fps(target_path: str) -> float:
@@ -23,7 +31,7 @@ def detect_fps(target_path: str) -> float:
         pass
     return 30
 
-def create_video(frame_paths, output_video_path, fps=30):
+async def create_video(frame_paths, output_video_path, fps=30):
     output_video_quality = 23  # Adjust as needed
     output_video_encoder = 'libx264'
 
@@ -47,9 +55,9 @@ def create_video(frame_paths, output_video_path, fps=30):
         '-y', output_video_path
     ])
 
-    return run_ffmpeg(commands)
+    await run_ffmpeg(commands)
 
-def extract_frames(target_path: str, fps: float = 30) -> List[str]:
+async def extract_frames(target_path: str, fps: float = 30) -> List[str]:
     temp_frame_quality = 100 * 31 // 100
 
     # Use the video file's name (without extension) as the base name for the frames directory
@@ -59,7 +67,7 @@ def extract_frames(target_path: str, fps: float = 30) -> List[str]:
     
     output_pattern = os.path.join(output_directory, '%04d.jpg')
 
-    run_ffmpeg(['-hwaccel', 'auto', '-i', target_path, '-q:v', str(temp_frame_quality), '-pix_fmt', 'rgb24', '-vf', f'fps={fps}', output_pattern])
+    await run_ffmpeg(['-hwaccel', 'auto', '-i', target_path, '-q:v', str(temp_frame_quality), '-pix_fmt', 'rgb24', '-vf', f'fps={fps}', output_pattern])
 
     # List all files in the output directory and return their paths
     image_paths = [os.path.join(output_directory, filename) for filename in os.listdir(output_directory) if filename.endswith('.jpg')]
