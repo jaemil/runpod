@@ -23,9 +23,6 @@ from dotenv import load_dotenv
 from runpod.serverless.utils import rp_upload, rp_download
 from botocore.exceptions import ClientError
 
-logger.info("env1 before load_dotenv", os.environ["BUCKET_ENDPOINT_URL"])
-logger.info("env2 before load_dotenv", os.environ.get("BUCKET_ENDPOINT_URL"))
-
 # load_dotenv()
 FACE_SWAP_MODEL = "checkpoints/inswapper_128.onnx"
 TMP_PATH = "/tmp/inswapper"
