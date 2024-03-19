@@ -330,29 +330,6 @@ def face_swap(
     return base64.b64encode(image_data).decode("utf-8")
 
 
-def determine_file_extension(image_data):
-    try:
-        if image_data.startswith("/9j/"):
-            image_extension = ".jpg"
-        elif image_data.startswith("iVBORw0Kg"):
-            image_extension = ".png"
-        elif image_data.startswith(b"\x1f\x43\x44\x30"):  # MKV format
-            file_extension = ".mkv"
-        elif image_data.startswith(b"\x00\x00\x00\x18moov"):  # MP4 format
-            file_extension = ".mp4"
-        elif image_data.startswith(b"\x1a\x45\xdf\xa3") or image_data.startswith(
-            b"\x1a\x45\xdf\xa3"
-        ):  # WebM format
-            file_extension = ".webm"
-        else:
-            # Default to png if we can't figure out the extension
-            image_extension = ".mp4"
-    except Exception as e:
-        image_extension = ".mp4"
-
-    return image_extension
-
-
 def is_video(video_path: str) -> bool:
     if video_path and os.path.isfile(video_path):
         mimetype, _ = mimetypes.guess_type(video_path)
@@ -455,8 +432,8 @@ async def face_swap_api(event, input):
                 result_image = Image.open(io.BytesIO(result_image_bytes))
 
                 # Save the result image as JPEG
-                result_image_path = os.path.splitext(frame_path)[0] + ".jpg"
-                result_image.save(result_image_path, format="JPEG")
+                result_image_path = os.path.splitext(frame_path)[0] + ".png"
+                result_image.save(result_image_path, format="PNG")
 
         # create video
         logger.info("create_video")
