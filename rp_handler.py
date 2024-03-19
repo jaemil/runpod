@@ -29,6 +29,8 @@ TMP_PATH = "/tmp/inswapper"
 logger = RunPodLogger()
 logger.info("env1", os.environ["BUCKET_ENDPOINT_URL"])
 logger.info("env2", os.environ.get("BUCKET_ENDPOINT_URL"))
+logger.info("env3", os.environ.get("RUNPOD_BUCKET_ENDPOINT_URL"))
+logger.info("env4", os.environ["RUNPOD_BUCKET_ENDPOINT_URL"])
 
 aws_access_key_id = os.environ.get('AWS_S3_ACCESS_KEY_ID', None)
 aws_secret_access_key = os.environ.get('AWS_S3_SECRET_ACCESS_KEY', None)

@@ -81,13 +81,5 @@ COPY --chmod=755 rp_handler.py /workspace/runpod/rp_handler.py
 # Docker container start script
 COPY --chmod=755 start_standalone.sh /start.sh
 
-ENV AWS_S3_REGION=""
-ENV AWS_S3_ACCESS_KEY_ID=""
-ENV AWS_S3_SECRET_ACCESS_KEY=""
-ENV AWS_S3_BUCKET_NAME=""
-ENV BUCKET_ENDPOINT_URL=""
-ENV BUCKET_ACCESS_KEY_ID=""
-ENV BUCKET_SECRET_ACCESS_KEY=""
-
 # Start the container
 ENTRYPOINT /start.sh
