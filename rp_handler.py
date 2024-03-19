@@ -23,17 +23,22 @@ from dotenv import load_dotenv
 from runpod.serverless.utils import rp_upload, rp_download
 from botocore.exceptions import ClientError
 
-load_dotenv()
+logger.info("env1 before load_dotenv", os.environ["BUCKET_ENDPOINT_URL"])
+logger.info("env2 before load_dotenv", os.environ.get("BUCKET_ENDPOINT_URL"))
+
+# load_dotenv()
 FACE_SWAP_MODEL = "checkpoints/inswapper_128.onnx"
 TMP_PATH = "/tmp/inswapper"
 logger = RunPodLogger()
-logger.info("env", os.getenv("BUCKET_ENDPOINT_URL"))
+logger.info("env1", os.environ["BUCKET_ENDPOINT_URL"])
+logger.info("env2", os.environ.get("BUCKET_ENDPOINT_URL"))
 
-aws_access_key_id = os.environ.get('AWS_S3_ACCESS_KEY_ID')
-aws_secret_access_key = os.environ.get('AWS_S3_SECRET_ACCESS_KEY')
-aws_region = os.environ.get('AWS_S3_REGION')
-bucket_name = os.environ.get('AWS_S3_BUCKET_NAME')
-bucket_endpoint_url = os.environ.get('BUCKET_ENDPOINT_URL')
+aws_access_key_id = os.environ.get('AWS_S3_ACCESS_KEY_ID', None)
+aws_secret_access_key = os.environ.get('AWS_S3_SECRET_ACCESS_KEY', None)
+aws_region = os.environ.get('AWS_S3_REGION', None)
+bucket_name = os.environ.get('AWS_S3_BUCKET_NAME', None)
+bucket_endpoint_url = os.environ.get('BUCKET_ENDPOINT_URL', None)
+
 
 # ---------------------------------------------------------------------------- #
 # Application Functions                                                        #
@@ -352,15 +357,19 @@ def extract_objectkey_from_url(url):
 
 # Generate pre-signed URL
 def generate_presigned_url(bucket_name, object_key, expiration=3600):
-    s3_client = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region)
     try:
+        s3_client = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key, region_name=aws_region)
         response = s3_client.generate_presigned_url('get_object',
                                                     Params={'Bucket': bucket_name,
                                                             'Key': object_key},
                                                     ExpiresIn=expiration)
     except ClientError as e:
-        print("Error generating presigned URL: ", e)
-        return None
+        logger.info("Error generating presigned URL: ", e)
+        return {
+            "error": str(e),
+            "output": traceback.format_exc(),
+            "refresh_worker": True,
+        }
     return response
 
 
@@ -369,6 +378,9 @@ async def face_swap_api(event, input):
 
     if not os.path.exists(TMP_PATH):
         os.makedirs(TMP_PATH)
+    
+    
+    logger.info("bucket_name", bucket_name)
     
     source_image_link = generate_presigned_url(bucket_name, extract_objectkey_from_url(input["source_image"]))
     target_video_link = generate_presigned_url(bucket_name, extract_objectkey_from_url(input["target_video"]))
@@ -462,7 +474,8 @@ async def face_swap_api(event, input):
 # ---------------------------------------------------------------------------- #
 def handler(event):
     validated_input = validate(event["input"], INPUT_SCHEMA)
-
+    
+    logger.info(f"Handler validating input")
     if "errors" in validated_input:
         return {"error": validated_input["errors"]}
 
