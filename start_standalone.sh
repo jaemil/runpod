@@ -22,6 +22,15 @@ echo "Starting RunPod Handler"
 export PYTHONUNBUFFERED=1
 cd /workspace/runpod
 
-export_env_vars
+# export_env_vars
+
+export BUCKET_ENDPOINT_URL
+export AWS_S3_REGION
+export AWS_S3_ACCESS_KEY_ID
+export AWS_S3_SECRET_ACCESS_KEY
+export AWS_S3_BUCKET_NAME
+export BUCKET_ENDPOINT_URL
+export BUCKET_ACCESS_KEY_ID
+export BUCKET_SECRET_ACCESS_KEY
 
 python3 -u rp_handler.py

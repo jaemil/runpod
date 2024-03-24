@@ -23,14 +23,14 @@ from dotenv import load_dotenv
 from runpod.serverless.utils import rp_upload, rp_download
 from botocore.exceptions import ClientError
 
-# load_dotenv()
+load_dotenv()
 FACE_SWAP_MODEL = "checkpoints/inswapper_128.onnx"
 TMP_PATH = "/tmp/inswapper"
 logger = RunPodLogger()
 logger.info("env1", os.environ["BUCKET_ENDPOINT_URL"])
 logger.info("env2", os.environ.get("BUCKET_ENDPOINT_URL"))
-logger.info("env3", os.environ.get("RUNPOD_BUCKET_ENDPOINT_URL"))
-logger.info("env4", os.environ["RUNPOD_BUCKET_ENDPOINT_URL"])
+# logger.info("env3", os.environ.get("RUNPOD_BUCKET_ENDPOINT_URL"))
+# logger.info("env4", os.environ["RUNPOD_BUCKET_ENDPOINT_URL"])
 
 aws_access_key_id = os.environ.get('AWS_S3_ACCESS_KEY_ID', None)
 aws_secret_access_key = os.environ.get('AWS_S3_SECRET_ACCESS_KEY', None)
