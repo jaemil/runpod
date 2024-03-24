@@ -475,8 +475,9 @@ def handler(event):
     validated_input = validate(event["input"], INPUT_SCHEMA)
     
     logger.info(f"Handler validating input")
+    logger.info(f"Handler validating input ${validated_input}")
     if "errors" in validated_input:
-        return {"error": validated_input["errors"]}
+        return {"error": "validation failed"}
 
     return face_swap_api(event, validated_input["validated_input"])
 
