@@ -443,8 +443,8 @@ async def face_swap_api(event, input):
                 result_image = Image.open(io.BytesIO(result_image_bytes))
 
                 # Save the result image as JPEG
-                result_image_path = os.path.splitext(frame_path)[0] + ".png"
-                result_image.save(result_image_path, format="PNG")
+                result_image_path = os.path.splitext(frame_path)[0] + ".jpg"
+                result_image.save(result_image_path, format="JPEG")
 
         # create video
         logger.info("create_video")

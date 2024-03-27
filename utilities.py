@@ -32,11 +32,11 @@ def detect_fps(target_path: str) -> float:
     return 30
 
 async def create_video(frame_paths, output_video_path, fps=30):
-    output_video_quality = 0  # Adjust as needed
+    output_video_quality = 23  # Adjust as needed
     output_video_encoder = 'libx264'
 
     # Input pattern for the frames
-    input_pattern = os.path.join(os.path.dirname(frame_paths[0]), '%04d.png')
+    input_pattern = os.path.join(os.path.dirname(frame_paths[0]), '%04d.jpg')
 
     commands = [
         '-r', str(fps),
@@ -58,19 +58,19 @@ async def create_video(frame_paths, output_video_path, fps=30):
     await run_ffmpeg(commands)
 
 async def extract_frames(target_path: str, fps: float = 30) -> List[str]:
-    temp_frame_quality = 100
+    temp_frame_quality = 100 * 31 // 100
 
     # Use the video file's name (without extension) as the base name for the frames directory
     video_name = os.path.splitext(os.path.basename(target_path))[0]
     output_directory = os.path.join(os.path.dirname(target_path), f'{video_name}_frames')
     os.makedirs(output_directory, exist_ok=True)
     
-    output_pattern = os.path.join(output_directory, '%04d.png')
+    output_pattern = os.path.join(output_directory, '%04d.jpg')
 
     await run_ffmpeg(['-hwaccel', 'auto', '-i', target_path, '-q:v', str(temp_frame_quality), '-pix_fmt', 'rgb24', '-vf', f'fps={fps}', output_pattern])
 
     # List all files in the output directory and return their paths
-    image_paths = [os.path.join(output_directory, filename) for filename in os.listdir(output_directory) if filename.endswith('.png')]
+    image_paths = [os.path.join(output_directory, filename) for filename in os.listdir(output_directory) if filename.endswith('.jpg')]
     sorted_image_paths = sorted(image_paths, key=lambda x: int(os.path.splitext(os.path.basename(x))[0]))
 
     return sorted_image_paths
